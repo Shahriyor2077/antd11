@@ -9,6 +9,7 @@ interface StudentType {
   gender: string;
 }
 
+
 const Student = () => {
   const [students, setStudents] = useState<StudentType[]>([]);
   const [fname, setFname] = useState("");
