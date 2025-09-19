@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api";
+import { Card, Row, Col, Form, Input, Select, DatePicker, Button, Popconfirm, message } from "antd";
+import dayjs, { Dayjs } from "dayjs";
 
 interface StudentType {
   id: number;
@@ -7,6 +9,7 @@ interface StudentType {
   lname: string;
   phone: string;
   gender: string;
+  birthdate: string;
 }
 
 const Student = () => {
@@ -15,11 +18,12 @@ const Student = () => {
   const [lname, setLname] = useState("");
   const [phone, setPhone] = useState("");
   const [gender, setGender] = useState("male");
+  const [birthdate, setBirthdate] = useState<Dayjs | null>(null);
   const [editId, setEditId] = useState<number | null>(null);
 
   const getStudents = async () => {
     try {
-      const res = api.get("/");
+      const res = api.get(`/`);
       setStudents((await res).data);
     } catch (error) {
       console.log(error);
@@ -33,31 +37,42 @@ const Student = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const newStudent = { fname, lname, phone, gender };
+    const newStudent = {
+      fname,
+      lname,
+      phone,
+      gender,
+      birthdate: birthdate ? birthdate.format("YYYY-MM-DD") : "",
+    };
 
     try {
       if (editId) {
         await api.put(`/${editId}`, newStudent);
         setEditId(null);
       } else {
-        await api.post("/", newStudent);
+        await api.post(`/`, newStudent);
       }
       setFname("");
       setLname("");
       setPhone("");
-      setGender("");
+      setGender("male");
+      setBirthdate(null);
       getStudents();
+      message.success(editId ? "Student updated" : "Student added");
     } catch (error) {
       console.error("Error:", error);
+      message.error("Request failed");
     }
   };
 
   const handleDelete=async(id: number)=>{
     try {
         await api.delete(`/${id}`);
-        getStudents()
+        getStudents();
+        message.success("Student deleted");
     } catch (error) {
         console.log("Delete error:", error);
+        message.error("Delete failed");
     }
   }
 
@@ -67,87 +82,77 @@ const Student = () => {
     setLname(student.lname)
     setPhone(student.phone)
     setGender(student.gender)
+    setBirthdate(student.birthdate ? dayjs(student.birthdate) : null)
   }
-
-
 
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Student CRUD</h1>
 
-      <form
-        onSubmit={handleSubmit}
-        action=""
-        className="mb-6 p-4 border rounded-lg shadow-md w-80 bg-white"
-      >
-        <input
-          type="text"
-          placeholder="First Name"
-          value={fname}
-          required
-          className="border p-2 w-full mb-2 rounded"
-          onChange={(e) => setFname(e.target.value)}
-        />
-        <input
-          type="text"
-          placeholder="Last Name"
-          value={lname}
-          required
-          className="border p-2 w-full mb-2 rounded"
-          onChange={(e) => setLname(e.target.value)}
-        />
-        <input
-          type="text"
-          placeholder="Phone"
-          value={phone}
-          required
-          className="border p-2 w-full mb-2 rounded"
-          onChange={(e) => setPhone(e.target.value)}
-        />
-        <select
-          value={gender}
-          onChange={(e) => setGender(e.target.value)}
-          className="border p-2 w-full mb-2 rounded"
-        >
-          <option value="male">Male</option>
-          <option value="female">Female</option>
-        </select>
-        <button
-          type="submit"
-          className="bg-blue-500 text-white px-4 py-2 rounded w-full cursor-pointer"
-        >
-          {editId ? "Update Student" : "Add Student"}
-        </button>
+      <form onSubmit={handleSubmit} action="" className="mb-6 max-w-xl">
+        <Card>
+          <Row gutter={[12, 12]}>
+            <Col span={12}>
+              <Form.Item label="First name" required>
+                <Input value={fname} onChange={(e) => setFname(e.target.value)} placeholder="First name" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Last name" required>
+                <Input value={lname} onChange={(e) => setLname(e.target.value)} placeholder="Last name" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Phone" required>
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Gender" required>
+                <Select value={gender} onChange={(v) => setGender(v)} options={[{ value: "male", label: "Male" }, { value: "female", label: "Female" }]} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Birthdate">
+                <DatePicker className="w-full" value={birthdate} onChange={(d) => setBirthdate(d)} format="YYYY-MM-DD" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label=" ">
+                <Button type="primary" htmlType="submit" className="w-full">
+                  {editId ? "Update Student" : "Add Student"}
+                </Button>
+              </Form.Item>
+            </Col>
+          </Row>
+        </Card>
       </form>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <Row gutter={[16, 16]}>
         {students.map((student) => (
-          <div
-            key={student.id}
-            className="p-4 border rounded-lg shadow-md bg-white"
-          >
-            <h2 className="text-lg font-semibold">
-              {student.fname} {student.lname}
-            </h2>
-            <p className="text-gray-600">{student.phone}</p>
-            <p className="text-sm text-gray-500">Gender: {student.gender}</p>
-            <div className="amt-3 flex gap-2">
-              <button
-                onClick={() => handleEdit(student)}
-                className="bg-yellow-400 px-3 py-1 rounded text-white cursor-pointer"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => handleDelete(student.id)}
-                className="bg-red-500 px-3 py-1 rounded text-white cursor-pointer"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
+          <Col xs={24} sm={12} md={8} key={student.id}>
+            <Card
+              title={`${student.fname} ${student.lname}`}
+              extra={
+                <div className="flex gap-2">
+                  <Button size="small" onClick={() => handleEdit(student)}>Edit</Button>
+                  <Popconfirm title="Delete this student?" onConfirm={() => handleDelete(student.id)} okText="Yes" cancelText="No">
+                    <Button size="small" danger>Delete</Button>
+                  </Popconfirm>
+                </div>
+              }
+            >
+              <div className="space-y-1">
+                <div><span className="text-gray-500">Phone:</span> {student.phone}</div>
+                <div><span className="text-gray-500">Gender:</span> {student.gender}</div>
+                {student.birthdate && (
+                  <div><span className="text-gray-500">Birthdate:</span> {dayjs(student.birthdate).format("YYYY-MM-DD")}</div>
+                )}
+              </div>
+            </Card>
+          </Col>
         ))}
-      </div>
+      </Row>
     </div>
   );
 };
